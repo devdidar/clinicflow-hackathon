@@ -1,0 +1,183 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import type { Response } from "express";
+import { clinicStore } from "../memory/store.js";
+import { runDemoReceptionist } from "../server/src/demoAgent.js";
+import { resolveIncomingSession } from "../server/src/sessionRouting.js";
+
+function parseEvents(payload: string) {
+  return payload
+    .trim()
+    .split("\n\n")
+    .filter(Boolean)
+    .map((block) => {
+      const event = block.match(/^event: (.+)$/m)?.[1] ?? "message";
+      const data = JSON.parse(block.match(/^data: (.+)$/m)?.[1] ?? "{}");
+      return { event, data };
+    });
+}
+
+function createMockSseResponse() {
+  const chunks: string[] = [];
+  const res = {
+    writeHead: () => res,
+    write: (chunk: string) => {
+      chunks.push(chunk);
+      return true;
+    },
+    end: () => res
+  } as unknown as Response;
+
+  return {
+    res,
+    text: () => chunks.join("")
+  };
+}
+
+async function demoStream(message: string, sessionId = "test-session") {
+  const mock = createMockSseResponse();
+  const result = await runDemoReceptionist({ res: mock.res, sessionId, message });
+  return { result, events: parseEvents(mock.text()) };
+}
+
+function toolPayload<T>(events: ReturnType<typeof parseEvents>, toolName: string): T | undefined {
+  return events.find((item) => item.event === "tool" && item.data.toolName === toolName && item.data.status === "completed")?.data.payload;
+}
+
+beforeEach(() => {
+  process.env.CLINICFLOW_DEMO_MODE = "1";
+  clinicStore.resetForTests();
+});
+
+describe("ClinicFlow AI integration", () => {
+  it("streams a booking flow, executes tools, and persists memory", async () => {
+    const { events, result } = await demoStream(
+      "Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199."
+    );
+
+    expect(events.some((item) => item.event === "delta")).toBe(true);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "check_doctor_availability")).toBe(true);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "book_appointment")).toBe(true);
+    expect(result.patientId).toMatch(/^pat_/);
+
+    const dashboard = clinicStore.getDashboard();
+    expect(dashboard.appointmentCount).toBe(1);
+    expect(dashboard.confirmationCount).toBe(1);
+
+    const patient = clinicStore.findPatient({ patientId: result.patientId });
+    expect(patient?.name).toBe("Didarul Azam");
+    expect(patient?.symptomsHistory.at(-1)?.symptom).toContain("fever");
+    expect(new Date(dashboard.appointments[0].startTime).getHours()).toBeGreaterThanOrEqual(12);
+    expect(new Date(dashboard.appointments[0].startTime).getHours()).toBeLessThan(17);
+  });
+
+  it("answers availability without hallucinating a booking", async () => {
+    const { events } = await demoStream("What afternoon appointment slots are available tomorrow?");
+    const availability = toolPayload<{ slots: Array<{ startTime: string }> }>(events, "check_doctor_availability");
+
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "check_doctor_availability")).toBe(true);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "book_appointment")).toBe(false);
+    expect(availability?.slots.length).toBeGreaterThan(0);
+    expect(availability?.slots.every((slot) => {
+      const hour = new Date(slot.startTime).getHours();
+      return hour >= 12 && hour < 17;
+    })).toBe(true);
+    expect(clinicStore.getDashboard().appointmentCount).toBe(0);
+  });
+
+  it("does not create a duplicate booking when the patient repeats the same request", async () => {
+    await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
+    const { events } = await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
+    const streamedText = events.filter((item) => item.event === "delta").map((item) => item.data.text).join("");
+
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "check_active_bookings")).toBe(true);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "book_appointment")).toBe(false);
+    expect(streamedText).toMatch(/already have an appointment|reschedule or cancel/i);
+    expect(clinicStore.getDashboard().appointmentCount).toBe(1);
+  });
+
+  it("reschedules an existing appointment through lookup and reschedule tools", async () => {
+    const booking = await demoStream(
+      "Hi, I'm Didarul Azam and I need to book a morning appointment for fever. My phone is 555-0199."
+    );
+    const originalAppointment = clinicStore.getDashboard().appointments[0];
+
+    const { events } = await demoStream("This is Didarul Azam. Please reschedule my appointment to the afternoon.");
+
+    expect(booking.result.patientId).toMatch(/^pat_/);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "fetch_patient_history")).toBe(true);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "check_doctor_availability")).toBe(true);
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "reschedule_appointment")).toBe(true);
+
+    const dashboard = clinicStore.getDashboard();
+    expect(dashboard.appointmentCount).toBe(1);
+    expect(dashboard.confirmationCount).toBe(2);
+    expect(dashboard.appointments[0].id).toBe(originalAppointment.id);
+    expect(dashboard.appointments[0].status).toBe("rescheduled");
+  });
+
+  it("looks up returning patient memory before personalizing", async () => {
+    await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
+    const { events } = await demoStream("This is Didarul Azam. Can you check my previous visit history?");
+
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "fetch_patient_history")).toBe(true);
+    expect(events.some((item) => item.event === "delta" && /Welcome back|found/i.test(item.data.text))).toBe(true);
+  });
+
+  it("flags emergency symptoms instead of normal booking", async () => {
+    const { events } = await demoStream("This is Omar Rahman. I have chest pain and shortness of breath.");
+
+    expect(events.some((item) => item.event === "tool" && item.data.toolName === "flag_emergency_case")).toBe(true);
+    expect(events.some((item) => item.event === "delta" && /emergency|ER|urgent/i.test(item.data.text))).toBe(true);
+
+    const dashboard = clinicStore.getDashboard();
+    expect(dashboard.emergencyCount).toBe(1);
+    expect(dashboard.appointmentCount).toBe(0);
+  });
+
+  it("creates a fresh session when sender phone changes on the same gateway session", async () => {
+    const sara = clinicStore.upsertPatient({ name: "Didarul Azam", contactPhone: "5550199" });
+    clinicStore.upsertSessionProfile({
+      sessionId: "gateway-thread",
+      patientId: sara.id,
+      patientName: "Didarul Azam",
+      phoneNumber: "5550199"
+    });
+    clinicStore.appendSessionTurn("gateway-thread", {
+      role: "user",
+      content: "Hi, I'm Didarul Azam and my phone is 555-0199.",
+      createdAt: new Date().toISOString()
+    });
+
+    const route = resolveIncomingSession({
+      sessionId: "gateway-thread",
+      phoneNumber: "555-0122",
+      message: "This is Omar Rahman. I have chest pain."
+    });
+
+    expect(route.switched).toBe(true);
+    expect(route.reason).toBe("phone_mismatch");
+    expect(route.sessionId).not.toBe("gateway-thread");
+    expect(clinicStore.getSessionProfile("gateway-thread")?.patientName).toBe("Didarul Azam");
+    expect(clinicStore.getSessionProfile(route.sessionId)?.patientName).toBe("Omar Rahman");
+    expect(clinicStore.getSessionTurns(route.sessionId)).toHaveLength(0);
+    expect(clinicStore.getSessionTurns("gateway-thread")[0].content).toContain("Didarul Azam");
+  });
+
+  it("creates a fresh session when claimed identity conflicts with the active patient", async () => {
+    clinicStore.upsertSessionProfile({
+      sessionId: "shared-browser",
+      patientName: "Didarul Azam",
+      phoneNumber: "5550199"
+    });
+
+    const route = resolveIncomingSession({
+      sessionId: "shared-browser",
+      message: "This is Omar Rahman. Can I book an afternoon appointment?"
+    });
+
+    expect(route.switched).toBe(true);
+    expect(route.reason).toBe("identity_mismatch");
+    expect(route.sessionId).not.toBe("shared-browser");
+    expect(clinicStore.getSessionProfile(route.sessionId)?.patientName).toBe("Omar Rahman");
+  });
+});

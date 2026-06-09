@@ -1,0 +1,515 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #eef3f0;
+  color: #16201d;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  height: 100vh;
+  padding: 18px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(23, 109, 96, 0.08), transparent 38%),
+    linear-gradient(180deg, #f7faf7 0%, #eaf1ef 100%);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 292px minmax(420px, 1fr) 320px;
+  gap: 14px;
+  max-width: 1480px;
+  margin: 0 auto;
+  height: calc(100vh - 36px);
+  min-height: 0;
+}
+
+.sidebar,
+.conversation,
+.right-rail {
+  min-width: 0;
+}
+
+.sidebar,
+.right-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.brand-block,
+.queue-panel,
+.tool-panel,
+.conversation,
+.confirmation-panel,
+.ops-panel {
+  border: 1px solid #d8e2dd;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 40px rgba(29, 50, 43, 0.08);
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 8px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  color: white;
+  background: #177063;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.brand-block p,
+.muted,
+.appointment-item span,
+.confirmation-card span,
+.confirmation-card small {
+  color: #60706b;
+}
+
+.queue-panel,
+.tool-panel,
+.confirmation-panel,
+.ops-panel {
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 42px;
+  border-bottom: 1px solid #e5ede9;
+}
+
+.metric-row:last-of-type {
+  border-bottom: 0;
+}
+
+.metric-row strong {
+  font-size: 22px;
+}
+
+.metric-row.urgent strong {
+  color: #b42318;
+}
+
+.panel-title,
+.status-pill,
+.tool-chip,
+.icon-button,
+.send-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title {
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.tool-list,
+.appointment-list,
+.check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tool-chip {
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #dce6e1;
+  color: #40504b;
+  background: #f8fbf9;
+  font-size: 13px;
+}
+
+.tool-chip.started {
+  border-color: #bfd9d3;
+  color: #176d60;
+}
+
+.tool-chip.completed {
+  border-color: #bddcc6;
+  color: #1d6f3a;
+}
+
+.tool-chip.failed {
+  border-color: #f3c7c1;
+  color: #b42318;
+}
+
+.conversation {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto auto;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 0;
+  height: 100%;
+}
+
+.chat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #dfe8e4;
+}
+
+.eyebrow {
+  display: block;
+  color: #177063;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.chat-header h2 {
+  font-size: 22px;
+}
+
+.status-pill {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #e9f7f0;
+  color: #14704c;
+  font-weight: 700;
+}
+
+.workflow-actions {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #dfe8e4;
+  background: #fbfdfc;
+}
+
+.workflow-actions button {
+  min-height: 36px;
+  border: 1px solid #cfdcd7;
+  border-radius: 8px;
+  background: white;
+  color: #21332e;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.workflow-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.messages {
+  min-height: 0;
+  padding: 20px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.72)),
+    repeating-linear-gradient(45deg, #eef5f1 0, #eef5f1 1px, transparent 1px, transparent 12px);
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+}
+
+.message-row.patient {
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 999px;
+  color: #177063;
+  background: #e8f3ef;
+}
+
+.message-row.patient .avatar {
+  color: #5c4a16;
+  background: #f4ead0;
+}
+
+.bubble {
+  max-width: min(640px, 78%);
+  min-height: 42px;
+  padding: 11px 13px;
+  border-radius: 8px;
+  background: white;
+  border: 1px solid #dde7e2;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.message-row.patient .bubble {
+  background: #1b7266;
+  color: white;
+  border-color: #1b7266;
+}
+
+.typing {
+  color: #87958f;
+}
+
+.composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 44px 1fr 48px;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid #dfe8e4;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 -12px 24px rgba(29, 50, 43, 0.08);
+}
+
+textarea {
+  width: 100%;
+  resize: none;
+  max-height: 96px;
+  border-radius: 8px;
+  border: 1px solid #ccd9d4;
+  padding: 11px 12px;
+  outline: none;
+}
+
+textarea:focus {
+  border-color: #177063;
+  box-shadow: 0 0 0 3px rgba(23, 112, 99, 0.14);
+}
+
+.icon-button,
+.send-button {
+  justify-content: center;
+  min-width: 44px;
+  min-height: 42px;
+  border: 1px solid #ccd9d4;
+  border-radius: 8px;
+  background: white;
+  color: #26332f;
+  cursor: pointer;
+}
+
+.icon-button.wide {
+  width: 100%;
+  margin-top: 12px;
+}
+
+.icon-button.active,
+.send-button {
+  color: white;
+  border-color: #177063;
+  background: #177063;
+}
+
+.send-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 9px;
+  border: 1px solid #dce6e1;
+  border-radius: 8px;
+  background: #fbfdfc;
+}
+
+.check-row svg {
+  margin-top: 2px;
+  color: #9aa8a3;
+}
+
+.check-row.done {
+  border-color: #bddcc6;
+  background: #f4fbf6;
+}
+
+.check-row.done svg {
+  color: #1d6f3a;
+}
+
+.check-row strong,
+.check-row span {
+  display: block;
+}
+
+.check-row strong {
+  font-size: 13px;
+}
+
+.check-row span {
+  color: #60706b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.confirmation-card,
+.empty-state,
+.appointment-item,
+.memory-card {
+  border-radius: 8px;
+  border: 1px solid #dce6e1;
+  background: #fbfdfc;
+}
+
+.confirmation-card,
+.empty-state,
+.memory-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.confirmation-card svg {
+  color: #1d6f3a;
+}
+
+.memory-card span,
+.memory-card small {
+  color: #60706b;
+}
+
+.appointment-item {
+  display: grid;
+  gap: 4px;
+  padding: 11px;
+}
+
+.appointment-item.emergency {
+  border-color: #f1c8c0;
+  background: #fff8f6;
+}
+
+.appointment-item.emergency strong {
+  color: #b42318;
+  text-transform: uppercase;
+}
+
+.error-line {
+  padding: 10px 14px;
+  background: #fff3f0;
+  color: #b42318;
+  border-top: 1px solid #f3c7c1;
+}
+
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1120px) {
+  .workspace {
+    grid-template-columns: 240px minmax(360px, 1fr);
+  }
+
+  .right-rail {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-shell {
+    padding: 10px;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .workspace,
+  .right-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace {
+    height: auto;
+    min-height: auto;
+  }
+
+  .conversation {
+    order: -1;
+  }
+
+  .conversation {
+    height: calc(100vh - 20px);
+    min-height: 620px;
+  }
+
+  .bubble {
+    max-width: 86%;
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "clinicflow-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "AI-native clinic front desk system built with the OpenAI Agents SDK.",
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,frontend -c cyan,magenta \"npm:dev:server\" \"npm:dev:frontend\"",
+    "dev:server": "tsx watch server/src/index.ts",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "build": "tsc --noEmit && npm --workspace frontend run build",
+    "test": "vitest run",
+    "test:integration": "CLINICFLOW_DEMO_MODE=1 vitest run tests/integration.test.ts"
+  },
+  "dependencies": {
+    "@openai/agents": "^0.0.6",
+    "concurrently": "^9.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "nanoid": "^5.0.9",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
