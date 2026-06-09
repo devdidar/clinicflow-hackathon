@@ -85,7 +85,13 @@ function id() {
 }
 
 function extractPhone(text: string): string | undefined {
-  return text.match(/(\+?\d[\d\s-]{5,}\d)/)?.[1]?.replace(/[^\d+]/g, "");
+  const raw = text.match(/(\+?\d[\d\s-]{5,}\d)/)?.[1]?.replace(/[^\d+]/g, "");
+  if (!raw) return undefined;
+  const digits = raw.replace(/[^\d]/g, "");
+  if (raw.startsWith("+880")) return `+${digits}`;
+  if (digits.startsWith("880")) return `+${digits}`;
+  if (digits.startsWith("01") && digits.length === 11) return `+880${digits.slice(1)}`;
+  return undefined;
 }
 
 function extractName(text: string): string | undefined {
@@ -122,7 +128,7 @@ function lastConfirmationFromTool(event?: ToolEvent): Confirmation | null {
 const workflowActions = [
   {
     label: "Book",
-    prompt: "Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199."
+    prompt: "Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678."
   },
   {
     label: "Availability",
@@ -154,7 +160,7 @@ function App() {
       text: "Good afternoon, ClinicFlow front desk. How can I help today?"
     }
   ]);
-  const [input, setInput] = useState("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
+  const [input, setInput] = useState("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678.");
   const [toolEvents, setToolEvents] = useState<ToolEvent[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [listening, setListening] = useState(false);
@@ -235,10 +241,7 @@ function App() {
     if (!text || isStreaming) return;
     const incomingPhone = extractPhone(text);
     const incomingName = extractName(text);
-    const localMismatch = Boolean(
-      (incomingPhone && activePhone && incomingPhone !== activePhone) ||
-        (incomingName && activeName && incomingName.toLowerCase() !== activeName.toLowerCase())
-    );
+    const localMismatch = Boolean(incomingPhone && activePhone && incomingPhone !== activePhone);
     const requestSessionId = localMismatch ? `session_${id()}` : sessionId;
     if (localMismatch) {
       setSessionId(requestSessionId);
@@ -297,11 +300,14 @@ function App() {
             setToolEvents([]);
             setMessages([{ id: id(), role: "patient", text }, { id: "streaming", role: "assistant", text: "" }]);
           }
+          if (item.event === "identity_conflict") {
+            setMessages((current) => [{ id: id(), role: "assistant", text: item.data.message }, ...current]);
+          }
           if (item.event === "done") {
             setPatientId(item.data.patientId ?? patientId);
             setSessionId(item.data.sessionId ?? requestSessionId);
             setActivePhone(item.data.phoneNumber ?? incomingPhone ?? activePhone);
-            setActiveName(item.data.patientName ?? incomingName ?? activeName);
+            setActiveName(item.data.patientName ?? activeName);
           }
           if (item.event === "error") {
             throw new Error(item.data.error);

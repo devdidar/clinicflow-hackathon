@@ -56,6 +56,14 @@ export function createApp() {
     const startedAt = Date.now();
     const demoMode = process.env.CLINICFLOW_DEMO_MODE === "1" || !process.env.OPENAI_API_KEY;
     const route = resolveIncomingSession({ sessionId, patientId, phoneNumber, message });
+    if (route.invalidPhone) {
+      sendSse(res, "error", {
+        ok: false,
+        error: "Invalid Bangladesh phone metadata. Use +8801XXXXXXXXX format."
+      });
+      res.end();
+      return;
+    }
     clinicStore.appendSessionTurn(route.sessionId, { role: "user", content: message, createdAt: new Date().toISOString() });
 
     const emitToolEvent = (event: ToolEvent) => sendSse(res, "tool", event);
@@ -72,6 +80,15 @@ export function createApp() {
           phoneNumber: route.phoneNumber,
           patientName: route.patientName,
           patientId: route.patientId
+        });
+      }
+
+      if (route.identityConflict) {
+        sendSse(res, "identity_conflict", {
+          claimedName: route.claimedName,
+          verifiedName: route.patientName,
+          phoneNumber: route.phoneNumber,
+          message: `[IDENTITY CONFLICT DETECTED: Sender claims to be ${route.claimedName} from ${route.patientName ?? "another patient's"} device]`
         });
       }
 
@@ -95,7 +112,13 @@ export function createApp() {
       }
 
       if (demoMode) {
-        const result = await runDemoReceptionist({ res, sessionId: route.sessionId, patientId: route.patientId, message });
+        const result = await runDemoReceptionist({
+          res,
+          sessionId: route.sessionId,
+          patientId: route.patientId,
+          message,
+          identityConflict: route.identityConflict ? { claimedName: route.claimedName, verifiedName: route.patientName } : undefined
+        });
         assistantText = result.reply;
         resolvedPatientId = result.patientId ?? route.patientId;
       } else {
@@ -137,12 +160,13 @@ export function createApp() {
         content: assistantText,
         createdAt: new Date().toISOString()
       });
+      const verifiedPatient = resolvedPatientId ? clinicStore.findPatient({ patientId: resolvedPatientId }) : undefined;
       if (resolvedPatientId || route.phoneNumber || route.patientName) {
         clinicStore.upsertSessionProfile({
           sessionId: route.sessionId,
           patientId: resolvedPatientId,
           phoneNumber: route.phoneNumber,
-          patientName: route.patientName
+          patientName: verifiedPatient?.name ?? route.patientName
         });
       }
       sendSse(res, "done", {
@@ -151,7 +175,7 @@ export function createApp() {
         sessionId: route.sessionId,
         switched: route.switched,
         phoneNumber: route.phoneNumber,
-        patientName: route.patientName,
+        patientName: verifiedPatient?.name ?? route.patientName,
         patientId: resolvedPatientId,
         assistantText
       });

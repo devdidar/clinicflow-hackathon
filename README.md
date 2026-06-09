@@ -125,8 +125,9 @@ Appointment guardrails:
 
 Session isolation:
 
-- Incoming gateway messages are routed by `phoneNumber` or session metadata before agent processing.
-- Phone/name mismatch creates a fresh session and clears active UI memory widgets.
+- Incoming gateway messages are routed by normalized Bangladeshi `+880` phone metadata before agent processing.
+- Phone metadata mismatch creates a fresh session and clears active UI memory widgets.
+- Text-only identity mismatch does not overwrite the verified phone owner's active profile.
 - Patient B messages are not appended to Patient A's session transcript.
 
 Integration layer:
@@ -140,7 +141,7 @@ Integration layer:
 Booking:
 
 ```text
-Patient: Hi, I'm Didarul Azam and I need an afternoon appointment for fever. My phone is 555-0199.
+Patient: Hi, I'm Didarul Azam and I need an afternoon appointment for fever. My phone is +8801712345678.
 ClinicFlow AI: You are all set, Didarul Azam. I booked you with Dr. Maya Patel for tomorrow afternoon. Your WhatsApp confirmation has been sent with reference apt_...
 ```
 

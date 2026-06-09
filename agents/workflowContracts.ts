@@ -66,7 +66,7 @@ export const clinicToolContracts = [
   {
     name: "session_router",
     state: "SESSION_ROUTING",
-    required_inputs: ["sessionId", "phoneNumber OR claimed patient identity"],
+    required_inputs: ["sessionId", "Bangladesh +880 phone metadata when available"],
     success_output: ["isolated sessionId", "patient profile binding", "switch reason when applicable"],
     retry_policy: "Do not retry with stale context. Create a fresh isolated session when identifiers conflict.",
     fallback: "Clear active UI widgets and ask the sender to confirm their name and phone."

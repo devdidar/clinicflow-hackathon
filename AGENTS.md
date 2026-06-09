@@ -140,14 +140,20 @@ The agent may only perform clinic operations through these tools. A patient-faci
 
 ## Session Routing And Multi-Tenant Isolation
 
-- Every incoming gateway message must include or derive a sender `phone_number` or `session_id`.
-- Before processing message text, compare incoming sender metadata against the active session profile.
-- If phone number or explicit identity conflicts with the active profile:
+- Every incoming gateway message should include sender `phone_number` metadata or a stable `session_id`.
+- Normalize phone metadata to Bangladeshi `+8801XXXXXXXXX` format before lookup or tool execution.
+- Reject invalid phone metadata that does not match a valid `+8801X...` mobile number.
+- Before processing message text, compare incoming phone metadata against the active session profile.
+- If phone number metadata conflicts with the active profile:
   -> abort use of the current session context
   -> start a new isolated session ID
   -> suppress previous patient messages from the active UI viewport
   -> clear Intake Checklist, Active Confirmation, and Patient Memory widgets
-  -> run patient lookup for the new phone/name before generating a response
+  -> run patient lookup for the new phone number before generating a response
+- If message text claims a different identity from the verified phone owner's profile:
+  -> do not switch the active profile based on text alone
+  -> keep the verified phone owner's profile on screen
+  -> if emergency symptoms are present, route emergency triage and append an identity-conflict flag
 - Never append Patient B messages or triage events to Patient A's session transcript.
 
 ---

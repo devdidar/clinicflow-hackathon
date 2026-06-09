@@ -51,7 +51,7 @@ beforeEach(() => {
 describe("ClinicFlow AI integration", () => {
   it("streams a booking flow, executes tools, and persists memory", async () => {
     const { events, result } = await demoStream(
-      "Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199."
+      "Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678."
     );
 
     expect(events.some((item) => item.event === "delta")).toBe(true);
@@ -85,8 +85,8 @@ describe("ClinicFlow AI integration", () => {
   });
 
   it("does not create a duplicate booking when the patient repeats the same request", async () => {
-    await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
-    const { events } = await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
+    await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678.");
+    const { events } = await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678.");
     const streamedText = events.filter((item) => item.event === "delta").map((item) => item.data.text).join("");
 
     expect(events.some((item) => item.event === "tool" && item.data.toolName === "check_active_bookings")).toBe(true);
@@ -97,7 +97,7 @@ describe("ClinicFlow AI integration", () => {
 
   it("reschedules an existing appointment through lookup and reschedule tools", async () => {
     const booking = await demoStream(
-      "Hi, I'm Didarul Azam and I need to book a morning appointment for fever. My phone is 555-0199."
+      "Hi, I'm Didarul Azam and I need to book a morning appointment for fever. My phone is +8801712345678."
     );
     const originalAppointment = clinicStore.getDashboard().appointments[0];
 
@@ -116,7 +116,7 @@ describe("ClinicFlow AI integration", () => {
   });
 
   it("looks up returning patient memory before personalizing", async () => {
-    await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is 555-0199.");
+    await demoStream("Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678.");
     const { events } = await demoStream("This is Didarul Azam. Can you check my previous visit history?");
 
     expect(events.some((item) => item.event === "tool" && item.data.toolName === "fetch_patient_history")).toBe(true);
@@ -135,22 +135,22 @@ describe("ClinicFlow AI integration", () => {
   });
 
   it("creates a fresh session when sender phone changes on the same gateway session", async () => {
-    const sara = clinicStore.upsertPatient({ name: "Didarul Azam", contactPhone: "5550199" });
+    const sara = clinicStore.upsertPatient({ name: "Didarul Azam", contactPhone: "+8801712345678" });
     clinicStore.upsertSessionProfile({
       sessionId: "gateway-thread",
       patientId: sara.id,
       patientName: "Didarul Azam",
-      phoneNumber: "5550199"
+      phoneNumber: "+8801712345678"
     });
     clinicStore.appendSessionTurn("gateway-thread", {
       role: "user",
-      content: "Hi, I'm Didarul Azam and my phone is 555-0199.",
+      content: "Hi, I'm Didarul Azam and my phone is +8801712345678.",
       createdAt: new Date().toISOString()
     });
 
     const route = resolveIncomingSession({
       sessionId: "gateway-thread",
-      phoneNumber: "555-0122",
+      phoneNumber: "+8801812345678",
       message: "This is Omar Rahman. I have chest pain."
     });
 
@@ -158,16 +158,18 @@ describe("ClinicFlow AI integration", () => {
     expect(route.reason).toBe("phone_mismatch");
     expect(route.sessionId).not.toBe("gateway-thread");
     expect(clinicStore.getSessionProfile("gateway-thread")?.patientName).toBe("Didarul Azam");
-    expect(clinicStore.getSessionProfile(route.sessionId)?.patientName).toBe("Omar Rahman");
+    expect(route.claimedName).toBe("Omar Rahman");
+    expect(clinicStore.getSessionProfile(route.sessionId)?.phoneNumber).toBe("+8801812345678");
+    expect(clinicStore.getSessionProfile(route.sessionId)?.patientName).toBeUndefined();
     expect(clinicStore.getSessionTurns(route.sessionId)).toHaveLength(0);
     expect(clinicStore.getSessionTurns("gateway-thread")[0].content).toContain("Didarul Azam");
   });
 
-  it("creates a fresh session when claimed identity conflicts with the active patient", async () => {
+  it("does not switch profiles from text-only identity conflict on the same phone session", async () => {
     clinicStore.upsertSessionProfile({
       sessionId: "shared-browser",
       patientName: "Didarul Azam",
-      phoneNumber: "5550199"
+      phoneNumber: "+8801712345678"
     });
 
     const route = resolveIncomingSession({
@@ -175,9 +177,32 @@ describe("ClinicFlow AI integration", () => {
       message: "This is Omar Rahman. Can I book an afternoon appointment?"
     });
 
-    expect(route.switched).toBe(true);
-    expect(route.reason).toBe("identity_mismatch");
-    expect(route.sessionId).not.toBe("shared-browser");
-    expect(clinicStore.getSessionProfile(route.sessionId)?.patientName).toBe("Omar Rahman");
+    expect(route.switched).toBe(false);
+    expect(route.identityConflict).toBe(true);
+    expect(route.sessionId).toBe("shared-browser");
+    expect(route.claimedName).toBe("Omar Rahman");
+    expect(clinicStore.getSessionProfile(route.sessionId)?.patientName).toBe("Didarul Azam");
+  });
+
+  it("normalizes Bangladesh phone metadata and rejects invalid numbers", async () => {
+    const localRoute = resolveIncomingSession({
+      sessionId: "bd-phone",
+      phoneNumber: "01712345678",
+      message: "Hi, I'm Didarul Azam."
+    });
+    const missingPlusRoute = resolveIncomingSession({
+      sessionId: "bd-phone-2",
+      phoneNumber: "8801812345678",
+      message: "Hi."
+    });
+    const invalidRoute = resolveIncomingSession({
+      sessionId: "bad-phone",
+      phoneNumber: "555-0199",
+      message: "Hi."
+    });
+
+    expect(localRoute.phoneNumber).toBe("+8801712345678");
+    expect(missingPlusRoute.phoneNumber).toBe("+8801812345678");
+    expect(invalidRoute.invalidPhone).toBe("555-0199");
   });
 });

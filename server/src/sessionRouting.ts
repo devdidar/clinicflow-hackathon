@@ -12,15 +12,30 @@ export interface SessionRoutingResult {
   sessionId: string;
   previousSessionId: string;
   switched: boolean;
-  reason?: "phone_mismatch" | "identity_mismatch";
+  reason?: "phone_mismatch";
   phoneNumber?: string;
   patientName?: string;
+  claimedName?: string;
   patientId?: string;
+  identityConflict?: boolean;
+  invalidPhone?: string;
 }
 
 export function normalizePhone(phone?: string): string | undefined {
-  const digits = phone?.replace(/[^\d+]/g, "");
-  return digits || undefined;
+  const cleaned = phone?.replace(/[^\d+]/g, "");
+  if (!cleaned) return undefined;
+  const digits = cleaned.replace(/[^\d]/g, "");
+  let normalized: string | undefined;
+
+  if (cleaned.startsWith("+880")) {
+    normalized = `+${digits}`;
+  } else if (digits.startsWith("880")) {
+    normalized = `+${digits}`;
+  } else if (digits.startsWith("01") && digits.length === 11) {
+    normalized = `+880${digits.slice(1)}`;
+  }
+
+  return normalized && /^\+8801[3-9]\d{8}$/.test(normalized) ? normalized : undefined;
 }
 
 export function extractPhone(message: string): string | undefined {
@@ -39,33 +54,37 @@ function sameName(a?: string, b?: string): boolean {
 }
 
 export function resolveIncomingSession(input: SessionRoutingInput): SessionRoutingResult {
-  const incomingPhone = normalizePhone(input.phoneNumber) ?? extractPhone(input.message);
+  const invalidPhone = input.phoneNumber && !normalizePhone(input.phoneNumber) ? input.phoneNumber : undefined;
+  const incomingPhone = normalizePhone(input.phoneNumber);
   const incomingName = extractClaimedName(input.message);
   const current = clinicStore.getSessionProfile(input.sessionId);
   const phoneMismatch = Boolean(incomingPhone && current?.phoneNumber && incomingPhone !== current.phoneNumber);
-  const identityMismatch = Boolean(incomingName && current?.patientName && !sameName(incomingName, current.patientName));
-  const switched = phoneMismatch || identityMismatch;
+  const switched = phoneMismatch;
   const sessionId = switched ? `session_${nanoid(8)}` : input.sessionId;
   const patient = clinicStore.findPatient({
     patientId: switched ? undefined : input.patientId ?? current?.patientId,
-    name: incomingName,
     contactPhone: incomingPhone
   });
+  const verifiedPatientName = patient?.name ?? (switched ? undefined : current?.patientName);
+  const identityConflict = Boolean(incomingName && verifiedPatientName && !sameName(incomingName, verifiedPatientName));
 
   clinicStore.upsertSessionProfile({
     sessionId,
     patientId: patient?.id ?? (switched ? undefined : input.patientId ?? current?.patientId),
     phoneNumber: incomingPhone ?? (switched ? undefined : current?.phoneNumber),
-    patientName: incomingName ?? patient?.name ?? (switched ? undefined : current?.patientName)
+    patientName: verifiedPatientName
   });
 
   return {
     sessionId,
     previousSessionId: input.sessionId,
     switched,
-    reason: phoneMismatch ? "phone_mismatch" : identityMismatch ? "identity_mismatch" : undefined,
+    reason: phoneMismatch ? "phone_mismatch" : undefined,
     phoneNumber: incomingPhone ?? current?.phoneNumber,
-    patientName: incomingName ?? patient?.name ?? current?.patientName,
-    patientId: patient?.id ?? (switched ? undefined : input.patientId ?? current?.patientId)
+    patientName: verifiedPatientName,
+    claimedName: incomingName,
+    patientId: patient?.id ?? (switched ? undefined : input.patientId ?? current?.patientId),
+    identityConflict,
+    invalidPhone
   };
 }
