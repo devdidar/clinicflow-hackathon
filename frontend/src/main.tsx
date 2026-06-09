@@ -301,7 +301,16 @@ function App() {
             setMessages([{ id: id(), role: "patient", text }, { id: "streaming", role: "assistant", text: "" }]);
           }
           if (item.event === "identity_conflict") {
-            setMessages((current) => [{ id: id(), role: "assistant", text: item.data.message }, ...current]);
+            setToolEvents((current) => [
+              ...current,
+              {
+                id: `identity_conflict_${id()}`,
+                toolName: "identity_conflict",
+                status: "completed",
+                label: item.data.message,
+                payload: item.data
+              }
+            ]);
           }
           if (item.event === "done") {
             setPatientId(item.data.patientId ?? patientId);

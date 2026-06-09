@@ -3,6 +3,7 @@ import { clinicStore } from "../../memory/store.js";
 import { locallyLooksUrgent, type ToolEvent } from "../../tools/clinicTools.js";
 import { sendSse } from "./streaming.js";
 import { normalizePhone } from "./sessionRouting.js";
+import { formatIdentityConflictEmergencyReply } from "./identityConflict.js";
 
 function pickName(message: string): string {
   const match = message.match(/(?:i am|i'm|name is|this is)\s+([a-z][a-z\s'-]{1,40}?)(?:[,.!?]|\s+(?:and|with|for|because|please)\b|$)/i);
@@ -80,8 +81,9 @@ export async function runDemoReceptionist(input: {
       label: "Emergency flagged for triage",
       payload: emergency
     });
-    const reply =
-      `${input.identityConflict?.claimedName ? `[IDENTITY CONFLICT DETECTED: Sender claims to be ${input.identityConflict.claimedName} from ${input.identityConflict.verifiedName ?? "another patient's"} device] ` : ""}I have flagged this as urgent for clinic triage. If you are having chest pain, trouble breathing, stroke symptoms, severe bleeding, or feel unsafe, please call emergency services or go to the nearest ER now. I can stay here to help notify the clinic, but this should not wait for a routine appointment.`;
+    const reply = input.identityConflict?.claimedName
+      ? formatIdentityConflictEmergencyReply({ verifiedName: input.identityConflict.verifiedName })
+      : "I have flagged this as urgent for clinic triage. If you are having chest pain, trouble breathing, stroke symptoms, severe bleeding, or feel unsafe, please call emergency services or go to the nearest ER now. I can stay here to help notify the clinic, but this should not wait for a routine appointment.";
     await streamText(input.res, reply);
     return { reply };
   }

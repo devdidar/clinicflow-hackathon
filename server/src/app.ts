@@ -7,6 +7,7 @@ import type { ClinicRunContext, ToolEvent } from "../../tools/clinicTools.js";
 import { extractRunItemToolLabel, extractTextDelta, openSse, sendSse } from "./streaming.js";
 import { runDemoReceptionist } from "./demoAgent.js";
 import { resolveIncomingSession } from "./sessionRouting.js";
+import { formatIdentityConflictLog } from "./identityConflict.js";
 
 export function createApp() {
   const app = express();
@@ -84,11 +85,23 @@ export function createApp() {
       }
 
       if (route.identityConflict) {
+        const message = formatIdentityConflictLog({ claimedName: route.claimedName, verifiedName: route.patientName });
         sendSse(res, "identity_conflict", {
           claimedName: route.claimedName,
           verifiedName: route.patientName,
           phoneNumber: route.phoneNumber,
-          message: `[IDENTITY CONFLICT DETECTED: Sender claims to be ${route.claimedName} from ${route.patientName ?? "another patient's"} device]`
+          message
+        });
+        emitToolEvent({
+          id: `identity_conflict_${Date.now()}`,
+          toolName: "identity_conflict",
+          status: "completed",
+          label: message,
+          payload: {
+            claimedName: route.claimedName,
+            verifiedName: route.patientName,
+            phoneNumber: route.phoneNumber
+          }
         });
       }
 

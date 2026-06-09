@@ -3,6 +3,7 @@ import type { Response } from "express";
 import { clinicStore } from "../memory/store.js";
 import { runDemoReceptionist } from "../server/src/demoAgent.js";
 import { resolveIncomingSession } from "../server/src/sessionRouting.js";
+import { formatIdentityConflictEmergencyReply, formatIdentityConflictLog } from "../server/src/identityConflict.js";
 
 function parseEvents(payload: string) {
   return payload
@@ -204,5 +205,27 @@ describe("ClinicFlow AI integration", () => {
     expect(localRoute.phoneNumber).toBe("+8801712345678");
     expect(missingPlusRoute.phoneNumber).toBe("+8801812345678");
     expect(invalidRoute.invalidPhone).toBe("555-0199");
+  });
+
+  it("keeps identity conflict logs internal while sending supportive emergency triage text", async () => {
+    const mock = createMockSseResponse();
+    const result = await runDemoReceptionist({
+      res: mock.res,
+      sessionId: "conflict-session",
+      patientId: "pat_verified",
+      message: "This is Omar Rahman. I have chest pain and shortness of breath.",
+      identityConflict: { claimedName: "Omar Rahman", verifiedName: "Didarul Azam" }
+    });
+    const events = parseEvents(mock.text());
+    const streamedText = events.filter((item) => item.event === "delta").map((item) => item.data.text).join("");
+
+    expect(formatIdentityConflictLog({ claimedName: "Omar Rahman", verifiedName: "Didarul Azam" })).toBe(
+      "[IDENTITY CONFLICT DETECTED: Sender claims to be Omar Rahman from Didarul Azam device]"
+    );
+    expect(result.reply).toBe(formatIdentityConflictEmergencyReply({ verifiedName: "Didarul Azam" }));
+    expect(streamedText).not.toContain("[IDENTITY CONFLICT DETECTED");
+    expect(streamedText).toContain("please call emergency services or go to the nearest ER now");
+    expect(streamedText).toContain("I am alerting our clinic staff right away");
+    expect(streamedText).toContain("registered to Didarul Azam");
   });
 });
