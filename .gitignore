@@ -4,3 +4,4 @@ frontend/dist/
 memory/data/
 .env
 .DS_Store
+.vercel
