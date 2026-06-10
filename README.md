@@ -62,6 +62,12 @@ npm run dev
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8787`
 
+## Deployment
+
+Production URL: `https://codex-hackathon-clinicflow.vercel.app`
+
+Vercel builds from the repository root with `npm run vercel-build` and serves the root `dist` directory.
+
 ## Test
 
 ```bash
