@@ -14,6 +14,7 @@ import {
   Stethoscope,
   UserRound
 } from "lucide-react";
+import "./design-system.css";
 import "./styles.css";
 
 type Role = "patient" | "assistant";
@@ -128,22 +129,27 @@ function lastConfirmationFromTool(event?: ToolEvent): Confirmation | null {
 const workflowActions = [
   {
     label: "Book",
+    icon: CalendarCheck,
     prompt: "Hi, I'm Didarul Azam and I need to book an afternoon appointment for fever. My phone is +8801712345678."
   },
   {
     label: "Availability",
+    icon: Clock,
     prompt: "What afternoon appointment slots are available tomorrow?"
   },
   {
     label: "Memory",
+    icon: UserRound,
     prompt: "This is Didarul Azam. Can you check my previous visit history?"
   },
   {
     label: "Reschedule",
+    icon: RefreshCw,
     prompt: "This is Didarul Azam. Please reschedule my appointment to the afternoon."
   },
   {
     label: "Emergency",
+    icon: ShieldAlert,
     prompt: "This is Omar Rahman. I have chest pain and shortness of breath."
   }
 ];
@@ -428,11 +434,15 @@ function App() {
           </header>
 
           <div className="workflow-actions">
-            {workflowActions.map((action) => (
-              <button key={action.label} onClick={() => sendMessage(action.prompt)} disabled={isStreaming}>
-                {action.label}
-              </button>
-            ))}
+            {workflowActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <button key={action.label} onClick={() => sendMessage(action.prompt)} disabled={isStreaming}>
+                  <Icon size={15} />
+                  <span>{action.label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <div className="messages">

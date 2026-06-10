@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+
+:root {
+  color-scheme: light;
+  --vh-primary-navy: #0f172a;
+  --vh-secondary-slate: #64748b;
+  --vh-tertiary-sage: #059669;
+  --vh-background: #f8fafc;
+  --vh-surface: #ffffff;
+  --vh-success: #22c55e;
+  --vh-warning: #eab308;
+  --vh-error: #ef4444;
+  --vh-info: #0ea5e9;
+
+  --vh-border: #d8e1ea;
+  --vh-border-strong: #cbd5e1;
+  --vh-sage-soft: #ecfdf5;
+  --vh-info-soft: #e0f2fe;
+  --vh-warning-soft: #fefce8;
+  --vh-error-soft: #fef2f2;
+  --vh-navy-soft: #e2e8f0;
+  --vh-muted: #475569;
+  --vh-muted-2: #64748b;
+  --vh-text: #0f172a;
+  --vh-inverted: #ffffff;
+
+  --vh-space-1: 8px;
+  --vh-space-2: 16px;
+  --vh-space-3: 24px;
+  --vh-space-4: 32px;
+  --vh-radius: 8px;
+  --vh-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --vh-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+  --vh-shadow-md: 0 18px 44px rgba(15, 23, 42, 0.1);
+
+  --vh-font-headline: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vh-font-body: "DM Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --vh-font-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  font-family: var(--vh-font-body);
+  background: var(--vh-background);
+  color: var(--vh-text);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.26);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+.panel-title,
+.metric-row strong,
+.status-pill {
+  font-family: var(--vh-font-headline);
+}
