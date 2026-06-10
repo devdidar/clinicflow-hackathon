@@ -64,7 +64,7 @@ npm run dev
 
 ## Deployment
 
-Production URL: `https://codex-hackathon-clinicflow.vercel.app`
+Production URL: `https://clinicflow-codex-hackathon.vercel.app`
 
 Vercel builds from the repository root with `npm run vercel-build` and serves the root `dist` directory.
 
